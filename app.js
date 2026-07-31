@@ -100,6 +100,7 @@ let state = normalizeState(loadState());
 let view = "dashboard";
 let flow = null;
 let live = loadActiveSession();
+let summary = null;
 let ticker = null;
 let timelineTimer = null;
 let modal = null;
@@ -398,26 +399,55 @@ function render() {
   clearInterval(ticker);
   applyTheme();
   const isSessionActive = !!live;
+  const isSummaryActive = !!summary;
   const isFlowOpen = !!flow;
   document.body.classList.toggle("pomodoro-active", isSessionActive);
   document.body.classList.toggle("overlay-active", isFlowOpen || !!modal);
-  app.className = isSessionActive ? "app-shell live-shell" : "app-shell";
+  document.body.classList.toggle("summary-active", isSummaryActive);
 
   if (isSessionActive) {
+    app.className = "app-shell live-shell";
     return renderLive();
   }
 
+  if (isSummaryActive) {
+    app.className = "app-shell summary-shell";
+    app.innerHTML = `
+      <main class="screen summary-screen">
+        <section class="summary-card">
+          <p class="eyebrow">${summary.status === "Completed" ? "Session complete" : "Session ended"}</p>
+          <h1>${summary.status === "Completed" ? "Quiet work done." : "Logged honestly."}</h1>
+          <div class="metric-grid">
+            ${metric(fmtDuration(summary.totalSeconds), "Total time")}
+            ${metric(fmtDuration(summary.focusedSeconds), "Focused time")}
+            ${metric(summary.completedPomodoros, "Pomodoros")}
+            ${metric(summary.status, "Status")}
+          </div>
+          <button class="primary-btn summary-done-btn" data-action="home">Done</button>
+        </section>
+      </main>
+    `;
+    bindEvents();
+    return;
+  }
+
+  app.className = view === "custom" ? "app-shell tune-shell" : "app-shell dashboard-shell";
   app.innerHTML = `
     <main class="screen">
       <header class="topbar">
-        <div class="brand-mark"><div class="logo"></div><div><p class="eyebrow">${view === "dashboard" ? `${daysRemaining()} days to CAT` : "Study OS"}</p><h1>${view === "dashboard" ? "History" : "Focus"}</h1></div></div>
-        <button class="icon-btn" data-action="open-start" aria-label="Start">+</button>
+        <div class="brand-mark"><div class="logo"></div><div><p class="eyebrow">${view === "dashboard" ? `${daysRemaining()} days to CAT` : "Study OS"}</p>${view === "dashboard" ? "" : "<h1>Focus</h1>"}</div></div>
       </header>
       ${view === "dashboard" ? dashboard() : customization()}
       ${isFlowOpen ? "" : `
       <nav class="bottom-nav">
-        <button class="nav-item ${view === "dashboard" ? "active" : ""}" data-view="dashboard">History</button>
-        <button class="nav-item ${view === "custom" ? "active" : ""}" data-view="custom">Tune</button>
+        <button class="nav-item ${view === "dashboard" ? "active" : ""}" data-view="dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H4a1 1 0 0 1-1-1V9.5z"/></svg>
+          Home
+        </button>
+        <button class="nav-item ${view === "custom" ? "active" : ""}" data-view="custom">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Tune
+        </button>
       </nav>`}
     </main>
     ${flow ? startFlow() : ""}
@@ -1136,8 +1166,8 @@ function finishSession(status = "Completed", reason = "") {
   saveState();
   localStorage.removeItem(ACTIVE_SESSION_KEY);
   live = null;
-  app.innerHTML = `<main class="screen"><section class="summary-card"><p class="eyebrow">${status === "Completed" ? "Session complete" : "Session ended"}</p><h1>${status === "Completed" ? "Quiet work done." : "Logged honestly."}</h1><div class="metric-grid">${metric(fmtDuration(totalSeconds), "Total time")}${metric(fmtDuration(focusedSeconds), "Focused time")}${metric(completedPomodoros, "Pomodoros")}${metric(status, "Status")}</div><button class="primary-btn" data-action="home">Done</button></section></main>`;
-  bindEvents();
+  summary = { status, totalSeconds, focusedSeconds, completedPomodoros };
+  render();
 }
 
 function countCompletedSubjects() {
@@ -1565,7 +1595,7 @@ function handleAction(event) {
   if (action === "resume-session") { live.endStep = null; live.endReason = ""; live.lastTickAt = performance.now(); renderLive(); }
   if (action === "show-end-reason") { live.endStep = "reason"; renderLive(); }
   if (action === "confirm-end-session" && live.endReason.trim()) finishSession("Ended Early", live.endReason);
-  if (action === "home") { view = "dashboard"; render(); }
+  if (action === "home") { summary = null; view = "dashboard"; render(); }
   if (action === "add-mode") { state.modes.push({ id: uid(), name: "Custom", hours: 7, note: "Your quiet plan" }); saveState(); render(); }
   if (action === "close-modal") { modal = null; render(); }
   if (action === "open-edit-record") { const record = state.history.find((item) => item.id === modal.id); modal = { type: "edit-record", id: modal.id, draft: { ...record } }; render(); }
