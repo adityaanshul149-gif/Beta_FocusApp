@@ -2,66 +2,68 @@ const DEFAULT_CAT_DATE = "2026-11-28";
 const STORAGE_KEY = "focus.study.os.v5";
 const ACTIVE_SESSION_KEY = "focus.study.active.session.v1";
 
+let tuneTab = "modes";
+
 const appThemes = {
   focus: {
-    name: "Focus",
-    bg: "#050506",
-    panel: "#111318",
-    panelSoft: "#171a21",
-    text: "#fffdf7",
-    muted: "#b9beca",
-    line: "rgba(255,255,255,.12)",
-    accent: "#a7d8ff",
-    button: "#ffe28a",
-    buttonText: "#121212",
-    timerText: "#ffffff",
-    pill: "rgba(0,0,0,.34)",
-    dialog: "#12141a"
+    name: "Headspace Sunshine",
+    bg: "#FAF7F2",
+    panel: "#FFFFFF",
+    panelSoft: "#F4F0E8",
+    text: "#1E1E1E",
+    muted: "#666666",
+    line: "#E8E3DA",
+    accent: "#FF632C",
+    button: "#FF632C",
+    buttonText: "#FFFFFF",
+    timerText: "#1E1E1E",
+    pill: "#EFECE6",
+    dialog: "#FFFFFF"
   },
   monk: {
-    name: "Monk Mode",
-    bg: "#070806",
-    panel: "#121610",
-    panelSoft: "#1b2118",
-    text: "#fbfff4",
-    muted: "#bac8b1",
-    line: "rgba(235,255,218,.13)",
-    accent: "#d7ef9f",
-    button: "#d7ef9f",
-    buttonText: "#14180f",
-    timerText: "#ffffff",
-    pill: "rgba(8,16,8,.38)",
-    dialog: "#10150e"
+    name: "Headspace Oasis",
+    bg: "#F5F8F5",
+    panel: "#FFFFFF",
+    panelSoft: "#EAF2EA",
+    text: "#1A251A",
+    muted: "#5B705B",
+    line: "#E1EBE1",
+    accent: "#00A86B",
+    button: "#00A86B",
+    buttonText: "#FFFFFF",
+    timerText: "#1A251A",
+    pill: "#E6EFE6",
+    dialog: "#FFFFFF"
   },
   intensive: {
-    name: "Intensive",
-    bg: "#080607",
-    panel: "#171112",
-    panelSoft: "#241718",
-    text: "#fff8f4",
-    muted: "#d1b7b0",
-    line: "rgba(255,220,210,.14)",
-    accent: "#ffc2b3",
-    button: "#ffb4a8",
-    buttonText: "#21110e",
-    timerText: "#ffffff",
-    pill: "rgba(0,0,0,.36)",
-    dialog: "#171112"
+    name: "Headspace Coral",
+    bg: "#FAF5F3",
+    panel: "#FFFFFF",
+    panelSoft: "#F7ECE8",
+    text: "#2B1A17",
+    muted: "#785B55",
+    line: "#EFE3DE",
+    accent: "#FF5C00",
+    button: "#FF5C00",
+    buttonText: "#FFFFFF",
+    timerText: "#2B1A17",
+    pill: "#EFE5E1",
+    dialog: "#FFFFFF"
   },
   flow: {
-    name: "Flow",
-    bg: "#04090a",
-    panel: "#0f1819",
-    panelSoft: "#172324",
-    text: "#f2fffd",
-    muted: "#a9c9c7",
-    line: "rgba(205,255,250,.14)",
-    accent: "#b8efd4",
-    button: "#b8efd4",
-    buttonText: "#0e1a16",
-    timerText: "#ffffff",
-    pill: "rgba(0,0,0,.34)",
-    dialog: "#0e1718"
+    name: "Headspace Breeze",
+    bg: "#F4F7FB",
+    panel: "#FFFFFF",
+    panelSoft: "#EBF0F7",
+    text: "#16202C",
+    muted: "#586A7E",
+    line: "#E0E7F1",
+    accent: "#3B82F6",
+    button: "#3B82F6",
+    buttonText: "#FFFFFF",
+    timerText: "#16202C",
+    pill: "#E6EDF5",
+    dialog: "#FFFFFF"
   }
 };
 
@@ -89,7 +91,7 @@ const defaults = {
   },
   theme: "focus",
   sound: "steady",
-  paletteTheme: "candy",
+  paletteTheme: "headspace",
   colorAssignments: { varc: 0, dilr: 1, quant: 2, short: 3, long: 4 }
   ,catDate: DEFAULT_CAT_DATE
 };
@@ -151,10 +153,11 @@ function normalizeBreaks(breaks) {
 }
 function colorPalettes() {
   return {
+    headspace: { name: "Headspace Mindful", colors: ["#FF632C", "#00A86B", "#3B82F6", "#FFC820", "#9C6ADE"] },
+    candy: { name: "Candy Pop", colors: ["#9B5DE5", "#F15BB5", "#FEE440", "#00BBF9", "#00F5D4"] },
     neon: { name: "Neon Pop", colors: ["#390099", "#9E0059", "#FF0054", "#FF5400", "#FFBD00"] },
     fiesta: { name: "Fiesta", colors: ["#F94144", "#F3722C", "#F8961E", "#43AA8B", "#277DA1"] },
     academic: { name: "Academic", colors: ["#203744", "#15616D", "#FFECD1", "#FF7D00", "#78290F"] },
-    candy: { name: "Candy Pop", colors: ["#9B5DE5", "#F15BB5", "#FEE440", "#00BBF9", "#00F5D4"] },
     modern: { name: "Modern Bright", colors: ["#EF476F", "#FFD166", "#06D6A0", "#118AB2", "#073B4C"] },
     aurora: { name: "Aurora", colors: ["#072AC8", "#1E96FC", "#A2D6F9", "#FCF300", "#FFC600"] },
     autumn: { name: "Autumn Fire", colors: ["#FF4E00", "#8EA604", "#F5BB00", "#EC9F05", "#BF3100"] },
@@ -168,19 +171,20 @@ function colorPalettes() {
 }
 function actionPalettes() {
   return {
-    neon: { play: "#00D1A7", pause: "#D6A84F", skip: "#7C8DB5", end: "#7A2848" },
-    fiesta: { play: "#2FBF71", pause: "#D7A94B", skip: "#6B8CA8", end: "#8F3A3D" },
-    academic: { play: "#2E9F85", pause: "#C89745", skip: "#607C8D", end: "#743737" },
-    candy: { play: "#20C997", pause: "#E5B94E", skip: "#8AA4C8", end: "#9B3D64" },
-    modern: { play: "#18B889", pause: "#D9A84A", skip: "#5E88A6", end: "#9A3B4F" },
-    aurora: { play: "#21BFA6", pause: "#D6B64C", skip: "#6F8FCC", end: "#7B365C" },
-    autumn: { play: "#4B9F72", pause: "#D4A246", skip: "#74889A", end: "#8E3828" },
+    headspace: { play: "#FF632C", pause: "#FFC820", skip: "#3B82F6", end: "#FF5252" },
+    candy: { play: "#F15BB5", pause: "#FEE440", skip: "#00BBF9", end: "#9B5DE5" },
+    neon: { play: "#FF0054", pause: "#FFBD00", skip: "#390099", end: "#9E0059" },
+    fiesta: { play: "#F3722C", pause: "#F8961E", skip: "#277DA1", end: "#F94144" },
+    academic: { play: "#15616D", pause: "#FF7D00", skip: "#203744", end: "#78290F" },
+    modern: { play: "#06D6A0", pause: "#FFD166", skip: "#118AB2", end: "#EF476F" },
+    aurora: { play: "#1E96FC", pause: "#FCF300", skip: "#072AC8", end: "#FFC600" },
+    autumn: { play: "#FF4E00", pause: "#F5BB00", skip: "#8EA604", end: "#BF3100" },
     pastel: { play: "#5BBF9B", pause: "#D2B75A", skip: "#8EA4BF", end: "#A45A72" },
     royal: { play: "#00B894", pause: "#C9A24D", skip: "#7B83B7", end: "#8E2D61" },
     coffee: { play: "#4F9B79", pause: "#B99A65", skip: "#7F8B93", end: "#7D3541" },
     productivity: { play: "#1FAE7A", pause: "#C8A64B", skip: "#688CA8", end: "#9A4A3A" },
     focus: { play: "#1FAE8A", pause: "#D3A83F", skip: "#6F8EAA", end: "#8A303A" },
-    ocean: { play: "#19A98C", pause: "#C8B85A", skip: "#668BA6", end: "#9A3651" }
+    ocean: { play: "#19A98C", pause: "#C8B85A", skip: "#668BA6", end: "#FF1654" }
   };
 }
 function sectionTargets() {
@@ -207,7 +211,7 @@ function normalizeColorAssignments(assignments = defaults.colorAssignments) {
   return normalized;
 }
 function applySectionAssignments(target = state) {
-  const palette = colorPalettes()[target.paletteTheme] || colorPalettes().candy;
+  const palette = colorPalettes()[target.paletteTheme] || colorPalettes().headspace;
   (target.subjects || []).forEach((subject) => {
     if (target.colorAssignments[subject.id] !== undefined) subject.color = palette.colors[target.colorAssignments[subject.id]];
   });
@@ -379,19 +383,30 @@ function applyTheme() {
   root.style.setProperty("--timer-text", theme.timerText);
   root.style.setProperty("--pill", theme.pill);
   root.style.setProperty("--dialog", theme.dialog);
-  const actions = actionPalettes()[state.paletteTheme] || actionPalettes().candy;
+  const actions = actionPalettes()[state.paletteTheme] || actionPalettes().headspace;
   root.style.setProperty("--action-play", actions.play);
+  root.style.setProperty("--action-play-ink", readableInk(actions.play));
   root.style.setProperty("--action-pause", actions.pause);
+  root.style.setProperty("--action-pause-ink", readableInk(actions.pause));
   root.style.setProperty("--action-skip", actions.skip);
+  root.style.setProperty("--action-skip-ink", readableInk(actions.skip));
   root.style.setProperty("--action-end", actions.end);
+  root.style.setProperty("--action-end-ink", readableInk(actions.end));
 }
 
 function render() {
   clearInterval(ticker);
   applyTheme();
-  document.body.classList.toggle("pomodoro-active", !!live);
-  app.className = live ? "app-shell live-shell" : "app-shell";
-  if (live) return renderLive();
+  const isSessionActive = !!live;
+  const isFlowOpen = !!flow;
+  document.body.classList.toggle("pomodoro-active", isSessionActive);
+  document.body.classList.toggle("overlay-active", isFlowOpen || !!modal);
+  app.className = isSessionActive ? "app-shell live-shell" : "app-shell";
+
+  if (isSessionActive) {
+    return renderLive();
+  }
+
   app.innerHTML = `
     <main class="screen">
       <header class="topbar">
@@ -399,10 +414,11 @@ function render() {
         <button class="icon-btn" data-action="open-start" aria-label="Start">+</button>
       </header>
       ${view === "dashboard" ? dashboard() : customization()}
+      ${isFlowOpen ? "" : `
       <nav class="bottom-nav">
         <button class="nav-item ${view === "dashboard" ? "active" : ""}" data-view="dashboard">History</button>
         <button class="nav-item ${view === "custom" ? "active" : ""}" data-view="custom">Tune</button>
-      </nav>
+      </nav>`}
     </main>
     ${flow ? startFlow() : ""}
     ${modal ? modalView() : ""}
@@ -452,20 +468,170 @@ function historyTable(rows) {
 function metric(value, label) { return `<article class="metric-card"><div class="metric-value">${value}</div><div class="metric-label">${label}</div></article>`; }
 
 function customization() {
+  const currentTab = tuneTab || "modes";
   return `
-    <section class="panel"><div class="panel-head"><h2>Study modes</h2><button class="tiny-btn" data-action="add-mode">Add</button></div>${state.modes.map((mode) => `
-      <div class="setting-row mode-setting"><input class="field mode-name-field" value="${escapeHtml(mode.name)}" data-mode-name="${mode.id}" /><input class="field mode-note-field" value="${escapeHtml(mode.note)}" data-mode-note="${mode.id}" /><input class="field" type="number" min="1" max="14" value="${mode.hours}" data-mode-hours="${mode.id}" />${isDefaultMode(mode.id) ? "" : `<button class="tiny-btn danger-lite" data-remove-mode="${mode.id}">Delete</button>`}</div>
-    `).join("")}</section>
-    <section class="panel"><div class="panel-head"><div><h2>Breaks</h2><p class="eyebrow">Breaks are outside study hours. Stopwatch counts them; focus time does not.</p></div></div>
-      ${breakEditor("short", "Short breaks", `Every ${state.breaks.short.everyMinutes}m of study`, state.breaks.short)}
-      ${breakEditor("long", "Long breaks", "After each subject", state.breaks.long)}
-    </section>
-    <section class="panel"><div class="panel-head"><div><h2>Section colors</h2><p class="eyebrow">Choose a curated palette and assign one color to each section.</p></div></div>${sectionColorEditor()}</section>
-    <section class="panel"><div class="panel-head"><div><h2>CAT date</h2><p class="eyebrow">Used for the subtle countdown on the Scheduled End card.</p></div><label class="mini-field"><span>Exam date</span><input class="field" type="date" value="${escapeHtml(state.catDate)}" data-cat-date></label></div></section>
-    <section class="panel"><div class="panel-head"><div><h2>Select chime</h2><p class="eyebrow">Long high-pitch alerts for iPhone PWA</p></div><button class="tiny-btn" data-action="test-chime">Test</button></div><div class="sound-grid">${soundOptions().map((sound) => `<button class="chip ${state.sound === sound.id ? "active" : ""}" data-sound="${sound.id}">${sound.name}</button>`).join("")}</div></section>
-    <section class="panel"><div class="panel-head"><div><h2>Profiles</h2><p class="eyebrow">Backup or restore all app data</p></div></div><div class="profile-actions"><button class="soft-btn" data-action="export-profile">Export JSON</button><label class="soft-btn import-label">Import JSON<input type="file" accept="application/json,.json,.txt" data-import-profile hidden></label></div></section>
-    <section class="panel"><div class="panel-head"><h2>Themes</h2></div><div class="theme-grid">${Object.entries(appThemes).map(([id, theme]) => `<button class="theme-card ${state.theme === id ? "active" : ""}" data-theme="${id}" style="--theme-accent:${theme.accent}; --theme-bg:${theme.bg}; --theme-panel:${theme.panel}"><span></span><strong>${theme.name}</strong><small>${themeMood(id)}</small></button>`).join("")}</div></section>
-    <p class="app-version">Version 26</p>
+    <div class="tune-wrapper">
+      <div class="tune-header">
+        <div class="brand-avatar-badge">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="16" fill="#FF632C"/>
+            <circle cx="11" cy="13" r="2.5" fill="#FFFFFF"/>
+            <circle cx="21" cy="13" r="2.5" fill="#FFFFFF"/>
+            <path d="M10 20 C12 23, 20 23, 22 20" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <p class="eyebrow">Mindful Study OS</p>
+          <h2>Tune & Settings</h2>
+        </div>
+      </div>
+
+      <div class="tune-layout">
+        <nav class="tune-sidebar" aria-label="Settings navigation">
+          <button class="tune-tab-btn ${currentTab === "modes" ? "active" : ""}" data-tune-tab="modes">
+            <span class="tab-icon">🎯</span>
+            <span>Modes</span>
+          </button>
+          <button class="tune-tab-btn ${currentTab === "breaks" ? "active" : ""}" data-tune-tab="breaks">
+            <span class="tab-icon">☕</span>
+            <span>Breaks</span>
+          </button>
+          <button class="tune-tab-btn ${currentTab === "theme" ? "active" : ""}" data-tune-tab="theme">
+            <span class="tab-icon">🎨</span>
+            <span>Colors & Theme</span>
+          </button>
+          <button class="tune-tab-btn ${currentTab === "sound" ? "active" : ""}" data-tune-tab="sound">
+            <span class="tab-icon">🔔</span>
+            <span>Sound & Backup</span>
+          </button>
+        </nav>
+
+        <div class="tune-content-card">
+          ${currentTab === "modes" ? tuneModesPanel() : ""}
+          ${currentTab === "breaks" ? tuneBreaksPanel() : ""}
+          ${currentTab === "theme" ? tuneThemePanel() : ""}
+          ${currentTab === "sound" ? tuneSoundPanel() : ""}
+        </div>
+      </div>
+      <p class="app-version">Version 26 · Mindful Focus</p>
+    </div>
+  `;
+}
+
+function tuneModesPanel() {
+  return `
+    <div class="panel-section">
+      <div class="panel-head">
+        <div>
+          <h2>Study Modes</h2>
+          <p class="eyebrow">Configure study goals and daily mode presets</p>
+        </div>
+        <button class="tiny-btn primary-lite" data-action="add-mode">+ Add Mode</button>
+      </div>
+      <div class="modes-list">
+        ${state.modes.map((mode) => `
+          <div class="setting-row mode-setting">
+            <div class="mode-inputs">
+              <input class="field mode-name-field" value="${escapeHtml(mode.name)}" data-mode-name="${mode.id}" placeholder="Mode Name" />
+              <input class="field mode-note-field" value="${escapeHtml(mode.note)}" data-mode-note="${mode.id}" placeholder="Short Note" />
+            </div>
+            <div class="mode-hours-wrap">
+              <input class="field hours-field" type="number" min="1" max="14" value="${mode.hours}" data-mode-hours="${mode.id}" />
+              <span class="field-unit">hrs</span>
+              ${isDefaultMode(mode.id) ? "" : `<button class="tiny-btn danger-lite" data-remove-mode="${mode.id}" title="Delete">✕</button>`}
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function tuneBreaksPanel() {
+  return `
+    <div class="panel-section">
+      <div class="panel-head">
+        <div>
+          <h2>Breaks & Activities</h2>
+          <p class="eyebrow">Rest periods between study blocks. Stopwatch counts breaks separately.</p>
+        </div>
+      </div>
+      ${breakEditor("short", "Short Breaks", `Every ${state.breaks.short.everyMinutes}m of study`, state.breaks.short)}
+      ${breakEditor("long", "Long Breaks", "After completing a subject block", state.breaks.long)}
+    </div>
+  `;
+}
+
+function tuneThemePanel() {
+  return `
+    <div class="panel-section">
+      <div class="panel-head">
+        <div>
+          <h2>Colors & Palette</h2>
+          <p class="eyebrow">Choose a Headspace color palette and theme</p>
+        </div>
+      </div>
+      <div class="theme-block">
+        <h3>Section Colors</h3>
+        ${sectionColorEditor()}
+      </div>
+      <div class="theme-block" style="margin-top: 24px;">
+        <h3>Theme Mood</h3>
+        <div class="theme-grid">
+          ${Object.entries(appThemes).map(([id, theme]) => `
+            <button class="theme-card ${state.theme === id ? "active" : ""}" data-theme="${id}" style="--theme-accent:${theme.accent}; --theme-bg:${theme.bg}; --theme-panel:${theme.panel}">
+              <span class="theme-dot" style="background:${theme.accent}"></span>
+              <strong>${theme.name}</strong>
+              <small>${themeMood(id)}</small>
+            </button>
+          `).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function tuneSoundPanel() {
+  return `
+    <div class="panel-section">
+      <div class="panel-head">
+        <div>
+          <h2>Select chime</h2>
+          <p class="eyebrow">Session alerts and timer completion chimes</p>
+        </div>
+        <button class="tiny-btn primary-lite" data-action="test-chime">Test</button>
+      </div>
+      <div class="sound-grid">
+        ${soundOptions().map((sound) => `
+          <button class="chip ${state.sound === sound.id ? "active" : ""}" data-sound="${sound.id}">${sound.name}</button>
+        `).join("")}
+      </div>
+
+      <div class="panel-sub-card" style="margin-top: 24px;">
+        <div class="panel-head">
+          <div>
+            <h3>CAT Exam Date</h3>
+            <p class="eyebrow">Target date for countdown ticker</p>
+          </div>
+          <label class="mini-field">
+            <input class="field" type="date" value="${escapeHtml(state.catDate)}" data-cat-date />
+          </label>
+        </div>
+      </div>
+
+      <div class="panel-sub-card" style="margin-top: 20px;">
+        <div class="panel-head">
+          <div>
+            <h3>Backup & Restore</h3>
+            <p class="eyebrow">Export or import your profile JSON</p>
+          </div>
+        </div>
+        <div class="profile-actions">
+          <button class="soft-btn" data-action="export-profile">Export JSON</button>
+          <label class="soft-btn import-label">Import JSON<input type="file" accept="application/json,.json,.txt" data-import-profile hidden></label>
+        </div>
+      </div>
+    </div>
   `;
 }
 function colorName(color, index) {
@@ -1167,6 +1333,7 @@ function modalView() {
 
 function bindEvents() {
   document.querySelectorAll("[data-view]").forEach((btn) => btn.addEventListener("click", () => { view = btn.dataset.view; render(); }));
+  document.querySelectorAll("[data-tune-tab]").forEach((btn) => btn.addEventListener("click", () => { tuneTab = btn.dataset.tuneTab; render(); }));
   document.querySelectorAll("[data-action]").forEach((btn) => btn.addEventListener("click", handleAction));
   document.querySelectorAll("[data-select-mode]").forEach((btn) => btn.addEventListener("click", () => {
     const mode = state.modes.find((m) => m.id === btn.dataset.selectMode);
@@ -1541,7 +1708,9 @@ for (const eventName of ["pointerdown", "touchstart", "keydown"]) {
 }
 window.addEventListener("pagehide", saveActiveSession);
 window.addEventListener("beforeunload", saveActiveSession);
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").then((reg) => reg.update()).catch(() => {});
+}
 applyTheme();
 render();
 

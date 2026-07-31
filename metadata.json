@@ -1,0 +1,8 @@
+{
+  "name": "Focus — Mindful Study OS",
+  "description": "A Headspace-inspired mindful study tracker with custom section color themes, reactive Pomodoro timers, and structured study modes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
