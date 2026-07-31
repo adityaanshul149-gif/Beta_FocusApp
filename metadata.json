@@ -1,6 +1,0 @@
-{
-  "name": "Monk Focus - Headspace Study OS",
-  "description": "A calming, Headspace-inspired PWA study companion and Pomodoro focus timer optimized for iPhone.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
