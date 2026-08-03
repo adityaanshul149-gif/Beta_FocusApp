@@ -117,7 +117,12 @@ function normalizeState(saved) {
     const preset = subjectDefaults.get(subject.id) || {};
     return { ...preset, ...subject, color: subject.color || preset.color || "#a7d8ff", emoji: cleanEmoji(subject.emoji, preset.emoji) };
   });
-  saved.modes = saved.modes || defaults.modes;
+  if (Array.isArray(saved.modes)) {
+    saved.modes = saved.modes.filter((m) => m && m.id && !m.id.startsWith("test_"));
+    if (!saved.modes.length) saved.modes = defaults.modes;
+  } else {
+    saved.modes = defaults.modes;
+  }
   saved.recovery = { ...defaults.recovery, ...(saved.recovery || {}) };
   saved.breaks = normalizeBreaks(saved.breaks);
   saved.stats = { ...defaults.stats, ...(saved.stats || {}) };
@@ -340,16 +345,22 @@ function catCountdownLabel() {
   const days = daysRemaining();
   return days > 0 ? `${days} Days to CAT` : "";
 }
-function fmtHours(hours) { return `${Number(hours).toFixed(hours % 1 ? 1 : 0)}h`; }
+function fmtHours(hours) {
+  const totalSec = Math.round(Number(hours) * 3600);
+  if (totalSec < 60) return `${totalSec}s`;
+  const totalMin = Math.round(totalSec / 60);
+  if (totalMin < 60) return `${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
 
 function fmtPlanDuration(hours) {
-
-  const minutes = Math.round(Number(hours) * 60);
-
+  const totalSec = Math.round(Number(hours) * 3600);
+  if (totalSec < 60) return `${totalSec}s`;
+  const minutes = Math.round(totalSec / 60);
   if (minutes >= 60 && minutes % 60 === 0) return `${minutes / 60}h`;
-
   return `${minutes}m`;
-
 }
 function fmtDuration(seconds) {
   const s = Math.max(0, Math.floor(seconds));
@@ -554,9 +565,9 @@ function tuneModesPanel() {
       <div class="panel-head">
         <div>
           <h2>Study Modes</h2>
-          <p class="eyebrow">Configure study goals and daily mode presets</p>
+          <p class="eyebrow">Configure daily study modes and target hours</p>
         </div>
-        <button class="tiny-btn primary-lite" data-action="add-mode">+ Add Mode</button>
+        <button class="tiny-btn primary-lite" data-action="add-mode">+ Add Custom Mode</button>
       </div>
       <div class="modes-list">
         ${state.modes.map((mode) => `
@@ -566,8 +577,8 @@ function tuneModesPanel() {
               <input class="field mode-note-field" value="${escapeHtml(mode.note)}" data-mode-note="${mode.id}" placeholder="Short Note" />
             </div>
             <div class="mode-hours-wrap">
-              <input class="field hours-field" type="number" min="1" max="14" value="${mode.hours}" data-mode-hours="${mode.id}" />
-              <span class="field-unit">hrs</span>
+              <input class="field hours-field" type="number" min="0.5" max="24" step="0.5" value="${Math.max(0.5, Math.round(mode.hours * 2) / 2)}" data-mode-hours="${mode.id}" style="width: 80px;" />
+              <span class="field-unit">hrs (${fmtHours(mode.hours)})</span>
               ${isDefaultMode(mode.id) ? "" : `<button class="tiny-btn danger-lite" data-remove-mode="${mode.id}" title="Delete">✕</button>`}
             </div>
           </div>
@@ -626,10 +637,10 @@ function tuneSoundPanel() {
     <div class="panel-section">
       <div class="panel-head">
         <div>
-          <h2>Select chime</h2>
-          <p class="eyebrow">Session alerts and timer completion chimes</p>
+          <h2>Pomodoro Sound</h2>
+          <p class="eyebrow">Select your pomodoro completion alert sound</p>
         </div>
-        <button class="tiny-btn primary-lite" data-action="test-chime">Test</button>
+        <button class="tiny-btn primary-lite" data-action="test-chime">Test Sound</button>
       </div>
       <div class="sound-grid">
         ${soundOptions().map((sound) => `
@@ -717,10 +728,10 @@ function breakEditor(type, title, note, config) {
 }
 function soundOptions() {
   return [
-    { id: "steady", name: "Attention Seeker", freq: 1850, gain: .34, type: "attention" },
-    { id: "gentle", name: "Gentle Beep", freq: 1650, gain: .22, type: "attention" },
-    { id: "soft", name: "Soft Beep", freq: 1420, gain: .16, type: "attention" },
-    { id: "calm", name: "Calm Beep", freq: 1180, gain: .12, type: "attention" }
+    { id: "steady", name: "Pomodoro High", freq: 2850, gain: .48, wave: "square" },
+    { id: "gentle", name: "Pomodoro Mid", freq: 2250, gain: .40, wave: "sine" },
+    { id: "soft", name: "Pomodoro Soft", freq: 1750, gain: .35, wave: "sine" },
+    { id: "calm", name: "Pomodoro Chime", freq: 1350, gain: .30, wave: "sine" }
   ];
 }
 function themeMood(id) {
@@ -732,29 +743,33 @@ function themeColor(theme) { return (appThemes[theme] || appThemes.focus).accent
 function isDefaultMode(id) { return ["focused", "intensive", "monk"].includes(id); }
 
 function openStart() {
-  flow = { step: "mode", selectedMode: state.modes[1].id, editing: false, plan: scalePlan(state.subjects, state.modes[1].hours) };
+  const defaultMode = state.modes[0] || defaults.modes[0];
+  flow = { step: "mode", selectedMode: defaultMode.id, editing: false, plan: scalePlan(state.subjects, defaultMode.hours) };
   render();
 }
 
 function scalePlan(subjects, targetHours) {
   const total = subjects.reduce((sum, s) => sum + Number(s.hours), 0) || 1;
-  let plan = subjects.map((s) => ({ ...s, hours: Math.round((s.hours / total) * targetHours * 2) / 2 }));
-  let delta = Math.round((targetHours - plan.reduce((sum, s) => sum + s.hours, 0)) * 2) / 2;
+  const target = Math.max(0.5, Math.round(targetHours * 2) / 2);
+  let plan = subjects.map((s) => ({ ...s, hours: Math.max(0.5, Math.round((s.hours / total) * target * 2) / 2) }));
+  let delta = Math.round((target - plan.reduce((sum, s) => sum + s.hours, 0)) * 2) / 2;
   plan[plan.length - 1].hours = Math.max(0.5, plan[plan.length - 1].hours + delta);
   return plan;
 }
 
 function startFlow() {
-  const mode = state.modes.find((m) => m.id === flow.selectedMode);
+  const mode = state.modes.find((m) => m.id === flow.selectedMode) || state.modes[0];
   if (flow.step === "mode") return `
     <div class="overlay"><section class="sheet"><div class="panel-head"><div><p class="eyebrow">Begin gently</p><h2>Choose today</h2></div><button class="icon-btn" data-action="close-flow">x</button></div>
     <div class="mode-grid">${state.modes.map((m) => `<button class="mode-card ${m.id === flow.selectedMode ? "active" : ""}" data-select-mode="${m.id}"><strong>${m.name}</strong><span>${fmtHours(m.hours)} · ${m.note}</span></button>`).join("")}</div>
     <div class="sheet-actions"><button class="primary-btn" data-action="load-plan">Load today's plan</button></div></section></div>`;
   const total = flow.plan.reduce((sum, s) => sum + Number(s.hours), 0);
-  const valid = Math.abs(total - mode.hours) < 0.01;
+  const target = mode.hours;
+  const isMatch = Math.abs(total - target) < 0.01;
+  const valid = isMatch;
   if (flow.step === "breaks") return breakReviewFlow(mode);
   return `
-    <div class="overlay"><section class="sheet"><div class="panel-head"><div><p class="eyebrow">${mode.name} · ${fmtHours(mode.hours)}</p><h2>Today's plan</h2></div><span class="total-pill ${valid ? "good" : "bad"}">${fmtHours(total)}</span></div>
+    <div class="overlay"><section class="sheet"><div class="panel-head"><div><p class="eyebrow">${mode.name} · ${fmtHours(mode.hours)} segment</p><h2>Today's plan</h2></div><span class="total-pill ${isMatch ? "good" : "bad"}">${fmtHours(total)}${isMatch ? "" : ` / Target: ${fmtHours(target)}`}</span></div>
     <div class="plan-list">${flow.plan.map((s, i) => `<article class="subject-card" data-index="${i}"><div class="drag subject-icon">${s.emoji || "•"}</div><div><strong>${s.name}</strong><p class="eyebrow">${fmtPlanDuration(s.hours)}</p></div>${flow.editing ? `<div class="subject-controls"><div class="subject-stepper"><button data-nudge="${i}:-30">-</button><button data-nudge="${i}:30">+</button></div><div class="subject-reorder"><button data-move-subject="${i}:-1" ${i === 0 ? "disabled" : ""}>↑</button><button data-move-subject="${i}:1" ${i === flow.plan.length - 1 ? "disabled" : ""}>↓</button></div></div>` : ""}</article>`).join("")}</div>
     <div class="sheet-actions"><button class="primary-btn" data-action="confirm-plan" ${valid ? "" : "disabled"}>Confirm and lock</button><button class="soft-btn" data-action="toggle-edit">${flow.editing ? "Done editing" : "Edit"}</button><button class="tiny-btn" data-action="close-flow">Cancel</button></div></section></div>`;
 }
@@ -768,8 +783,8 @@ function breakReviewFlow(mode) {
 
 function breakPlanRows() {
   return flow.timeline.map((item, index) => item.type === "study" ? `
-      <article class="break-plan-row is-study"><span>${item.emoji || "•"}</span><div><strong>${item.subject}</strong><p class="eyebrow">${item.minutes}m study</p></div></article>` : `
-      <article class="break-plan-row"><span>${item.emoji || "•"}</span><div><strong>${item.subject}</strong><p class="eyebrow">${item.minutes}m break</p></div><select class="field break-select" data-break-kind="${index}"><option value="micro" ${item.type === "micro" ? "selected" : ""}>Short</option><option value="medium" ${item.type === "medium" ? "selected" : ""}>Medium</option><option value="none">Remove</option>${canMergeAround(index) ? `<option value="merge">Remove + merge</option>` : ""}</select><select class="field break-activity-select" data-break-choice="${index}">${breakChoices(item.type).map((choice) => `<option ${choice === item.subject ? "selected" : ""}>${escapeHtml(choice)}</option>`).join("")}</select></article>`).join("");
+      <article class="break-plan-row is-study"><span>${item.emoji || "•"}</span><div><strong>${item.subject}</strong><p class="eyebrow">${fmtPlanDuration(item.minutes / 60)} study</p></div></article>` : `
+      <article class="break-plan-row"><span>${item.emoji || "•"}</span><div><strong>${item.subject}</strong><p class="eyebrow">${fmtPlanDuration(item.minutes / 60)} break</p></div><select class="field break-select" data-break-kind="${index}"><option value="micro" ${item.type === "micro" ? "selected" : ""}>Short</option><option value="medium" ${item.type === "medium" ? "selected" : ""}>Medium</option><option value="none">Remove</option>${canMergeAround(index) ? `<option value="merge">Remove + merge</option>` : ""}</select><select class="field break-activity-select" data-break-choice="${index}">${breakChoices(item.type).map((choice) => `<option ${choice === item.subject ? "selected" : ""}>${escapeHtml(choice)}</option>`).join("")}</select></article>`).join("");
 }
 
 function breakChoices(type) {
@@ -808,13 +823,14 @@ function buildTimeline(plan) {
   const shortBreak = state.breaks.short;
   const longBreak = state.breaks.long;
   const maxStudyChunk = normalizeStudyChunkMinutes(shortBreak.everyMinutes);
+
   plan.forEach((subject, subjectIndex) => {
-    let remainingStudyMinutes = Math.round(subject.hours * 60);
+    let remainingStudyMinutes = Math.max(30, subject.hours * 60);
     while (remainingStudyMinutes > 0) {
       const minutes = Math.min(maxStudyChunk, remainingStudyMinutes);
       timeline.push({ type: "study", subject: subject.name, minutes, color: subject.color, emoji: subject.emoji || "•" });
       remainingStudyMinutes -= minutes;
-      if (remainingStudyMinutes > 0 && shortBreak.activities.length) {
+      if (remainingStudyMinutes > 0.0001 && shortBreak.activities.length) {
         const activity = pickActivity(shortBreak.activities, lastRecovery);
         lastRecovery = activity;
         timeline.push({ type: "micro", subject: activity, minutes: shortBreak.minutes, color: breakColor("micro"), emoji: breakEmoji("micro", activity) });
@@ -1130,7 +1146,7 @@ function advanceToNextBlock() {
 function showCompletionCelebration(item) {
   live.celebrating = true;
   const isBlockDone = !live.timeline.slice(live.index + 1).some((x) => x.type === "study" && x.subject === item.subject);
-  const title = isBlockDone ? `🏆 ${item.subject} Completed!` : ["Good Job!", "Well Done!", "Nice Work!"][Math.floor(Math.random() * 3)];
+  const title = isBlockDone ? `${item.subject} Completed!` : ["Good Job!", "Well Done!", "Nice Work!"][Math.floor(Math.random() * 3)];
   const quote = randomQuote();
   const overlay = document.createElement("div");
   overlay.className = `celebration ${isBlockDone ? "big" : "small"}`;
@@ -1196,44 +1212,206 @@ function applySessionStats(hours, subjects) {
 function heatLevel(hours) { return hours >= 8 ? 3 : hours >= 4 ? 2 : hours > 0 ? 1 : 0; }
 
 async function playCompletionChime() { return playMainNotification(); }
+
+function playHTMLAudioBeep(selectedObj) {
+  try {
+    const selected = selectedObj || soundOptions().find((s) => s.id === state.sound) || soundOptions()[0];
+    const baseFreq = selected.freq || 2250;
+    const sampleRate = 16000;
+    const durationSec = 2.0; // Solid 2-second continuous beeeeeep
+    const numSamples = Math.floor(sampleRate * durationSec);
+    const buffer = new ArrayBuffer(44 + numSamples);
+    const view = new DataView(buffer);
+    const writeString = (offset, str) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + numSamples, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate, true);
+    view.setUint16(32, 1, true);
+    view.setUint16(34, 8, true);
+    writeString(36, "data");
+    view.setUint32(40, numSamples, true);
+
+    const isSquare = selected.wave === "square";
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      let amp = 0.8;
+      if (t < 0.02) amp *= (t / 0.02);
+      if (t > durationSec - 0.05) amp *= ((durationSec - t) / 0.05);
+      amp = Math.max(0, amp);
+
+      const raw = isSquare
+        ? (Math.sin(2 * Math.PI * baseFreq * t) >= 0 ? 0.7 : -0.7)
+        : Math.sin(2 * Math.PI * baseFreq * t);
+      const val = raw * amp;
+      view.setUint8(44 + i, Math.floor(((val * 0.45) + 1) * 127));
+    }
+    let binary = "";
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const audio = new Audio("data:audio/wav;base64," + btoa(binary));
+    audio.play().catch(() => {});
+  } catch {}
+}
+
 async function playMainNotification(retried = false) {
   try {
-    if (!(await recoverAudioSystem(true))) throw new Error("Audio playback is unavailable");
+    if (navigator.vibrate) {
+      try { navigator.vibrate([200, 100, 400]); } catch {}
+    }
+    await unlockAudio();
     const selected = soundOptions().find((sound) => sound.id === state.sound) || soundOptions()[0];
+
+    if (!audioContext || audioContext.state !== "running") {
+      playHTMLAudioBeep(selected);
+      showAudioFallback();
+      return true;
+    }
+
     const now = audioContext.currentTime;
+    const duration = 2.0; // 2.0 seconds solid single beeeeeeeeep
+    const baseFreq = selected.freq || 950;
+    const baseGain = selected.gain || 0.25;
+
     const master = audioContext.createGain();
     master.gain.setValueAtTime(1, now);
     master.connect(audioContext.destination);
-    [selected.freq, selected.freq * 1.015].forEach((freq, index) => {
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      osc.type = index ? "sine" : "square";
-      osc.frequency.setValueAtTime(freq, now);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(index ? selected.gain * .34 : selected.gain, now + 0.035);
-      gain.gain.setValueAtTime(index ? selected.gain * .34 : selected.gain, now + 2.7);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 3);
-      osc.connect(gain).connect(master);
-      osc.start(now);
-      osc.stop(now + 3.05);
-    });
+
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.type = selected.wave || "sine";
+    osc.frequency.setValueAtTime(baseFreq, now);
+
+    // Smooth single continuous tone envelope
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(baseGain, now + 0.02);
+    gain.gain.setValueAtTime(baseGain, now + duration - 0.05);
+    gain.gain.linearRampToValueAtTime(0.0001, now + duration);
+
+    osc.connect(gain).connect(master);
+    osc.start(now);
+    osc.stop(now + duration + 0.05);
+
     lastSoundReady = true;
     return true;
   } catch (error) {
-    if (!retried) {
-      resetAudioSystem();
-      await recoverAudioSystem();
-      return playMainNotification(true);
-    }
-    lastSoundReady = false;
-    showSoundStatus(false);
+    const selected = soundOptions().find((sound) => sound.id === state.sound) || soundOptions()[0];
+    playHTMLAudioBeep(selected);
     showAudioFallback();
     return false;
   }
 }
+
+function playHTMLAudioTestChime() {
+  try {
+    const sampleRate = 16000;
+    const durationSec = 0.8;
+    const numSamples = Math.floor(sampleRate * durationSec);
+    const buffer = new ArrayBuffer(44 + numSamples);
+    const view = new DataView(buffer);
+    const writeString = (offset, str) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + numSamples, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate, true);
+    view.setUint16(32, 1, true);
+    view.setUint16(34, 8, true);
+    writeString(36, "data");
+    view.setUint32(40, numSamples, true);
+
+    const notes = [
+      { start: 0.0, end: 0.30, freq: 523.25 },
+      { start: 0.22, end: 0.55, freq: 659.25 },
+      { start: 0.44, end: 0.80, freq: 783.99 }
+    ];
+
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      let totalVal = 0;
+      notes.forEach((n) => {
+        if (t >= n.start && t <= n.end) {
+          const relT = t - n.start;
+          const dur = n.end - n.start;
+          let amp = 0.5;
+          if (relT < 0.02) amp *= (relT / 0.02);
+          if (relT > dur - 0.05) amp *= ((dur - relT) / 0.05);
+          totalVal += Math.sin(2 * Math.PI * n.freq * t) * Math.max(0, amp);
+        }
+      });
+      view.setUint8(44 + i, Math.floor(((totalVal * 0.3) + 1) * 127));
+    }
+    let binary = "";
+    const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const audio = new Audio("data:audio/wav;base64," + btoa(binary));
+    audio.play().catch(() => {});
+  } catch {}
+}
+
+async function playTestChimeSound() {
+  try {
+    await unlockAudio();
+    if (!audioContext || audioContext.state !== "running") {
+      playHTMLAudioTestChime();
+      showAudioFallback();
+      return true;
+    }
+    const now = audioContext.currentTime;
+    const master = audioContext.createGain();
+    master.gain.setValueAtTime(0.85, now);
+    master.connect(audioContext.destination);
+
+    const notes = [
+      { delay: 0.0, duration: 0.35, freq: 523.25 },
+      { delay: 0.18, duration: 0.35, freq: 659.25 },
+      { delay: 0.36, duration: 0.45, freq: 783.99 }
+    ];
+
+    notes.forEach((n) => {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(n.freq, now + n.delay);
+
+      gain.gain.setValueAtTime(0.0001, now + n.delay);
+      gain.gain.linearRampToValueAtTime(0.35, now + n.delay + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + n.delay + n.duration);
+
+      osc.connect(gain).connect(master);
+      osc.start(now + n.delay);
+      osc.stop(now + n.delay + n.duration + 0.02);
+    });
+
+    lastSoundReady = true;
+    return true;
+  } catch {
+    playHTMLAudioTestChime();
+    showAudioFallback();
+    return false;
+  }
+}
+
 async function playCountdownBeep() {
   try {
     await unlockAudio();
+    if (!audioContext || audioContext.state !== "running") {
+      playHTMLAudioBeep();
+      return;
+    }
     const now = audioContext.currentTime;
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
@@ -1245,11 +1423,15 @@ async function playCountdownBeep() {
     osc.connect(gain).connect(audioContext.destination);
     osc.start(now);
     osc.stop(now + 0.18);
-  } catch {}
+  } catch {
+    playHTMLAudioBeep();
+  }
 }
+
 async function playToggleSound() {
   try {
     await unlockAudio();
+    if (!audioContext || audioContext.state !== "running") return;
     const now = audioContext.currentTime;
     [live?.paused ? 740 : 520, live?.paused ? 520 : 740].forEach((freq, index) => {
       const start = now + index * 0.055;
@@ -1266,11 +1448,13 @@ async function playToggleSound() {
     });
   } catch {}
 }
+
 function resetAudioSystem() {
   try { if (audioContext && audioContext.state !== "closed") audioContext.close(); } catch {}
   audioContext = null;
   lastSoundReady = false;
 }
+
 function createAudioContext() {
   const Context = window.AudioContext || window.webkitAudioContext;
   if (!Context) return null;
@@ -1278,36 +1462,30 @@ function createAudioContext() {
   try { context = new Context({ latencyHint: "interactive" }); } catch { context = new Context(); }
   return context;
 }
+
 async function verifyAudioPlayback() {
   if (!audioContext || audioContext.state !== "running") return false;
-  const now = audioContext.currentTime;
-  const gain = audioContext.createGain();
-  const osc = audioContext.createOscillator();
-  gain.gain.setValueAtTime(0.00001, now);
-  osc.frequency.setValueAtTime(440, now);
-  osc.connect(gain).connect(audioContext.destination);
-  osc.start(now);
-  osc.stop(now + 0.025);
-  audioProbeAt = Date.now();
   return true;
 }
+
 async function recoverAudioSystem(force = false) {
   try {
     if (!window.AudioContext && !window.webkitAudioContext) return false;
-    if (force || !audioContext || audioContext.state === "closed") {
-      resetAudioSystem();
+    if (!audioContext || audioContext.state === "closed") {
       audioContext = createAudioContext();
     }
     if (!audioContext) return false;
-    if (audioContext.state === "suspended") await audioContext.resume();
-    if (audioContext.state !== "running") throw new Error("Audio context is not running");
-    lastSoundReady = await verifyAudioPlayback();
+    if (audioContext.state === "suspended") {
+      await audioContext.resume().catch(() => {});
+    }
+    lastSoundReady = audioContext.state === "running";
     return lastSoundReady;
   } catch {
     lastSoundReady = false;
     return false;
   }
 }
+
 async function unlockAudio() {
   await recoverAudioSystem();
 }
@@ -1373,7 +1551,10 @@ function bindEvents() {
   }));
   document.querySelectorAll("[data-nudge]").forEach((btn) => btn.addEventListener("click", () => {
     const [index, delta] = btn.dataset.nudge.split(":").map(Number);
-    flow.plan[index].hours = clamp(Math.round((flow.plan[index].hours + delta / 60) * 2) / 2, 0.5, 10);
+    const currentMin = Math.round((flow.plan[index].hours || 0.5) * 60);
+    const deltaMin = delta > 0 ? 30 : -30;
+    const newMin = Math.max(30, currentMin + deltaMin);
+    flow.plan[index].hours = newMin / 60;
     render();
   }));
   document.querySelectorAll("[data-move-subject]").forEach((btn) => btn.addEventListener("click", () => {
@@ -1386,7 +1567,12 @@ function bindEvents() {
   }));
   document.querySelectorAll("[data-mode-hours]").forEach((input) => input.addEventListener("change", () => {
     const mode = state.modes.find((m) => m.id === input.dataset.modeHours);
-    mode.hours = clamp(Number(input.value), 1, 14); saveState(); render();
+    if (mode) {
+      const hrs = Math.max(0.5, Math.round((Number(input.value) || 0.5) * 2) / 2);
+      mode.hours = hrs;
+      saveState();
+      render();
+    }
   }));
   document.querySelectorAll("[data-mode-name]").forEach((input) => input.addEventListener("change", () => {
     const mode = state.modes.find((m) => m.id === input.dataset.modeName);
@@ -1581,7 +1767,14 @@ function handleAction(event) {
   if (action === "close-flow") { flow = null; render(); }
   if (action === "load-plan") { flow.step = "plan"; render(); }
   if (action === "toggle-edit") { flow.editing = !flow.editing; render(); }
-  if (action === "confirm-plan") { flow.timeline = buildTimeline(flow.plan); flow.step = "breaks"; render(); }
+  if (action === "confirm-plan") {
+    const mode = state.modes.find((m) => m.id === flow.selectedMode) || state.modes[0];
+    const total = flow.plan.reduce((sum, s) => sum + Number(s.hours), 0);
+    if (Math.abs(total - mode.hours) >= 0.01) return;
+    flow.timeline = buildTimeline(flow.plan);
+    flow.step = "breaks";
+    render();
+  }
   if (action === "back-to-plan") { flow.step = "plan"; render(); }
   if (action === "start-reviewed-session") startLive();
   if (action === "test-chime") testSelectedSound();
@@ -1698,27 +1891,7 @@ document.addEventListener("touchend", (event) => {
 async function testSelectedSound() {
   let ok = false;
   try {
-    if (!(await recoverAudioSystem())) throw new Error("Audio unavailable");
-    const now = audioContext.currentTime;
-    const master = audioContext.createGain();
-    master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.32, now + 0.035);
-    master.gain.setValueAtTime(0.32, now + 0.34);
-    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.52);
-    master.connect(audioContext.destination);
-    [[554, 0], [740, 0.16]].forEach(([frequency, offset]) => {
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(frequency, now + offset);
-      gain.gain.setValueAtTime(0.0001, now + offset);
-      gain.gain.exponentialRampToValueAtTime(offset ? 0.48 : 0.72, now + offset + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.34);
-      osc.connect(gain).connect(master);
-      osc.start(now + offset);
-      osc.stop(now + offset + 0.38);
-    });
-    ok = true;
+    ok = await playTestChimeSound();
   } catch {}
   if (ok) lastSoundReady = true;
   showSoundStatus(ok);
@@ -1733,8 +1906,8 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("focus", handleAudioReturn);
 window.addEventListener("pageshow", handleAudioReturn);
-for (const eventName of ["pointerdown", "touchstart", "keydown"]) {
-  window.addEventListener(eventName, () => { recoverAudioSystem(); }, { passive: true });
+for (const eventName of ["pointerdown", "touchstart", "click", "keydown"]) {
+  window.addEventListener(eventName, () => { unlockAudio(); }, { passive: true });
 }
 window.addEventListener("pagehide", saveActiveSession);
 window.addEventListener("beforeunload", saveActiveSession);
